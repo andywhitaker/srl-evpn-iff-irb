@@ -1,5 +1,8 @@
 # SR Linux EVPN with Interface-Ful (IFF) Symmetric IRB
 
+> [!NOTE]
+> For the more modern Interface-Less (IFL) approach, see the companion lab: [andywhitaker/srl-evpn-irb](https://github.com/andywhitaker/srl-evpn-irb).
+
 ## Topology
 ![topology](lab-topology.png)
 
