@@ -1,4 +1,4 @@
-# SR Linux EVPN with Interface-Ful (IFF) Symmetric IRB
+# SR Linux EVPN with Symmetric IRB (Interface-Ful with SBD)
 
 > [!NOTE]
 > **EVPN Symmetric IRB Architectural Variants in this Series:**
@@ -10,18 +10,31 @@
 ![topology](lab-topology.png)
 
 ## Lab Description
-This lab demonstrates **SR Linux EVPN using Symmetric IRB with Interface-Ful (IFF) Inter-Subnet Routing**, utilizing a **Supplementary Broadcast Domain (SBD)** as defined in **RFC 9135** and **RFC 9136 Section 4.4**.
+This lab demonstrates **Nokia SR Linux EVPN using Symmetric IRB with Interface-Ful (IFF) Routing**, utilizing a **Supplementary Broadcast Domain (SBD)** standardized under **RFC 9136 Section 4.4**.
 
-### Key Differences Between IFL and IFF Symmetric IRB
+In this architecture:
+- **Supplementary Broadcast Domain (SBD):** The L3 VNI (10000) terminates inside a dedicated transit MAC-VRF (`sbd`) with `vxlan0.100 (type bridged)` and `supplementary-broadcast-domain` enabled.
+- **Unnumbered SBD IRB Binding:** An unnumbered IRB interface (`irb0.100` configured with `evpn-interface-ful-unnumbered`) binds the transit SBD MAC-VRF to the tenant IP-VRF (`tenant1`), borrowing the IP-VRF router MAC.
+- **EVPN Type-5 Route Propagation:** The SBD originates EVPN Type-5 IP Prefix routes with `advertise-interface-ful true`, carrying the SBD VNI (10000) and the Router's MAC extended community.
+- **Two-Stage Next-Hop Resolution:** Ingress packets route from client subnets to `irb0.100`, which bridges across the SBD VNI encapsulated within a full Ethernet frame destined to the remote leaf's Router MAC (`bgp-evpn-iff`).
+- **Standard for Multicast & Legacy ASICs:** This model is required for EVPN Optimized Inter-Subnet Multicast (OISM, RFC 9251) and platforms requiring L2 transit framing.
 
-| Architectural Dimension | Interface-Less (IFL) IRB | Interface-Ful (IFF) IRB with SBD |
-| :--- | :--- | :--- |
-| **L3 VNI Termination** | Terminated directly in the IP-VRF (`type routed` on `vxlan0.100`). No transit MAC-VRF exists. | Terminated in a dedicated **Supplementary Broadcast Domain (SBD)** MAC-VRF (`type mac-vrf`, `vxlan0.100` is `type bridged`). |
-| **IP-VRF to Transit VNI Binding** | Direct `vxlan-interface` association inside the `ip-vrf`. | Via an **unnumbered SBD IRB interface** (`irb0.100` configured with `evpn-interface-ful-unnumbered`) binding the SBD MAC-VRF to the IP-VRF. |
-| **Host Route Signaling** | EVPN **Route Type 2 (MAC-IP)** carrying **dual VNIs/labels** (Label 1 = MAC-VRF VNI, Label 2 = IP-VRF VNI) and dual Route Targets. | EVPN **Route Type 5 (IP Prefix)** advertised by the SBD MAC-VRF with VNI 10000 and the router MAC carried in the Gateway MAC / Router's MAC extended community. |
-| **Inter-Subnet Data Plane** | VXLAN header carries the tenant IP-VRF VNI. The inner payload is directly an IP packet (or Ethernet frame addressed to router MAC). | VXLAN header carries the **SBD VNI (10000)**. The inner Ethernet frame is addressed from the ingress PE router MAC to the egress PE router MAC (`irb0.100` MAC). |
-| **Tenant IP-VRF Complexity** | `tenant1` requires `vxlan-interface`, `protocols bgp-evpn`, and `protocols bgp-vpn` with export/import RTs. | `tenant1` is a clean L3 IP-VRF containing only IRB subinterfaces (`irb0.1`, `irb0.2`, `irb0.100`). EVPN and BGP-VPN are isolated to the SBD MAC-VRF. |
-| **Multi-Vendor Interoperability** | Supported on modern platforms that implement pure EVPN IFL. | Essential for interoperability with platforms that require an SBD or implement RFC 9136 IFF unnumbered, as well as EVPN OISM (RFC 9251). |
+---
+
+### Architectural Comparison: The Three Symmetric IRB Models
+
+| Architectural Dimension | Method 1: IFL Dual-Label (RFC 9135) | Method 2: IFL Type-5 Host Routes (RFC 9136 §4.3) | Method 3: IFF with SBD (RFC 9136 §4.4) |
+| :--- | :--- | :--- | :--- |
+| **Standard / Reference** | RFC 9135 | RFC 9136 Section 4.3 | RFC 9136 Section 4.4 |
+| **L3 VNI Network Instance** | `tenant1 (type ip-vrf)` | `tenant1 (type ip-vrf)` | `sbd (type mac-vrf)` |
+| **VXLAN Interface Type** | `vxlan0.100 (type routed)` | `vxlan0.100 (type routed)` | `vxlan0.100 (type bridged)` |
+| **Client MAC-VRF Type-2 Labels** | **Dual Labels:** `10010 + 10000` | **Single Label:** `10010` only | **Single Label:** `10010` only |
+| **Host Route Carrier** | EVPN Type-2 MAC-IP | **EVPN Type-5 IP Prefix (/32)** | **EVPN Type-5 IP Prefix (/32)** via SBD |
+| **Tenant Routing Table Type** | `bgp-evpn-ifl-host` | `bgp-evpn` | `bgp-evpn-iff` |
+| **Next-Hop Resolution** | Direct to Remote VTEP Tunnel | Direct to Remote VTEP Tunnel | Two-Stage via SBD Bridge Table |
+| **Inner Wire Payload** | Raw IPv4 / Direct L3 Payload | Raw IPv4 / Direct L3 Payload | Full Ethernet Frame (DMAC=Router MAC) |
+| **Multicast Support (OISM)** | Unsupported | Unsupported | Mandatory for RFC 9251 OISM |
+| **Target Use-Case** | Pure Nokia / Lowest BGP Prefix Count | Multi-Vendor / Hyperscale IP-VRFs | OISM Multicast & Legacy ASICs |
 
 ---
 
