@@ -1,7 +1,10 @@
 # SR Linux EVPN with Interface-Ful (IFF) Symmetric IRB
 
 > [!NOTE]
-> For the more modern Interface-Less (IFL) approach, see the companion lab: [srl-evpn-irb](https://github.com/andywhitaker/srl-evpn-irb).
+> **EVPN Symmetric IRB Architectural Variants in this Series:**
+> - **Method 1 (Interface-Less with Dual-Label Type-2, RFC 9135):** [srl-evpn-ifl-irb](https://github.com/andywhitaker/srl-evpn-ifl-irb)
+> - **Method 2 (Interface-Less with Type-5 Host Routes, RFC 9136 §4.3):** [srl-evpn-type5-irb](https://github.com/andywhitaker/srl-evpn-type5-irb)
+> - **Method 3 (This Lab - Interface-Ful with SBD, RFC 9136 §4.4):** [srl-evpn-iff-irb](https://github.com/andywhitaker/srl-evpn-iff-irb)
 
 ## Topology
 ![topology](lab-topology.png)
